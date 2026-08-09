@@ -1,0 +1,81 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate static site files
+        run: |
+          test -f index.html
+          test -f pokemon.css
+          test -f pokemon.js
+          node --check pokemon.js
+
+      - name: Stage Pages Artifact
+        run: |
+          mkdir site
+          cp index.html pokemon.css pokemon.js site/
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: site-build
+          path: ./site
+          retention-days: 1
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Pages Artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: site-build
+          path: ./site
+
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@47f197a2200bb9de68ba5f48fad1c088eb1c4a32 # v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+
+      - name: Verify Deployment
+        run: |
+          url="https://samuelivx.github.io/My-Pokedex/"
+          for attempt in {1..12}; do
+            status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 \
+              --output /dev/null --write-out "%{http_code}" "$url" || true)"
+            if [ "$status" = "200" ]; then
+              echo "Deployed URL returned 200 OK"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Deployed URL returned $status, expected 200"
+          exit 1
