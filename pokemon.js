@@ -18,7 +18,6 @@ const fetchPokemon = () => {
 };
 
 const displayPokemon = (pokemon) => {
-    console.log(pokemon);
     const pokemonHTMLString = pokemon
         .map(
             (pokeman) => `
@@ -34,25 +33,3 @@ const displayPokemon = (pokemon) => {
 };
 
 fetchPokemon();
-
-function fetchPoke() {
- 
-    let pokemon = $(".pokemon").val();
-    let request = new XMLHttpRequest();
-   
-    let url = "https://pokeapi.co/api/v2/pokemon/"+pokemon;
-    console.log(url);
-    request.open("GET", url, true);
-    request.onload = function() {
-  
-      if (this.response == "Not Found"){
-        $("#res").text('Search Result for: " '+pokemon+ ' "' );
-        $("#pokeId").text("This is not an offical pokemon in the pokedex");
-      }
-  
-      else{
-   
-        let data = JSON.parse(this.response);
-        }
-      }
-    };
